@@ -298,7 +298,31 @@ class ConfigurationClassParser {
 				}
 			}
 		}
-
+		/**
+		 * @import导入的类总共有三种：A、普通类、实现ImportSelect、ImportBeanDefinitionRegistrar的类
+		 *
+		 * 1、对于实现ImportSelector接口的导入类，如果并且还为deferredImportSelectorHandler的实现类，则在自动装配时处理。
+		 * 对于仅实现的ImportSelector接口的类先实例化，然后调用selectImport接口得到要导入的类，然后转化成sourceClass然后
+		 * 递归调用processImports；
+		 *
+		 * 2、对于实现ImportBeanDefinitionRegistrar的导入，同样进行实例化，然后加入
+		 * Map<ImportBeanDefinitionRegistrar, AnnotationMetadata> importBeanDefinitionRegistrars =new LinkedHashMap<>()
+		 * Key为实例，value为导入该类的类信息（比如当前candidateClass是A，A是Config类导入的,此时value就为config的信息）；
+		 *
+		 * 3、导入的普通类，将当前candidate结合configClass（该信息主要用于candidate记录是被谁导入的）生成新的configClass，
+		 * 递归调用processConfigurationClass
+		 *
+		 *
+		 * 总结：
+		 * A、针对导入的ImportSelect实现类以及普通类，最终都会执行processConfigurationClass，作为Configuration放入
+		 * private final Map<ConfigurationClass, ConfigurationClass> configurationClasses = new LinkedHashMap<>()
+		 * 但是都还没注册到beanDefinitionMap中，通过后续的	this.reader.loadBeanDefinitions(configClasses)实现注册
+		 * beanDefinitionMap。
+		 *
+		 * B、实现ImportBeanDefinitionRegistrar接口的类，未放入configurationClasses中，将实现类标记在ConfigurationClass中
+		 * importBeanDefinitionRegistrars的属性上，最终通过this.reader.loadBeanDefinitions(configClasses)实现注册
+		 *
+		 */
 		// Process any @Import annotations
 		processImports(configClass, sourceClass, getImports(sourceClass), true);
 
@@ -346,6 +370,7 @@ class ConfigurationClassParser {
 		if (!memberClasses.isEmpty()) {
 			List<SourceClass> candidates = new ArrayList<>(memberClasses.size());
 			for (SourceClass memberClass : memberClasses) {
+				//该类如果有configuration(full)注解或者component componentscan import inportSource(lite)注解标记，则作为新的source加入候选
 				if (ConfigurationClassUtils.isConfigurationCandidate(memberClass.getMetadata()) &&
 						!memberClass.getMetadata().getClassName().equals(configClass.getMetadata().getClassName())) {
 					candidates.add(memberClass);
