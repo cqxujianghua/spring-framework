@@ -258,6 +258,16 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 	 * Build and validate a configuration model based on the registry of
 	 * {@link Configuration} classes.
 	 */
+	/**
+	 * 			 * full和lite的区别：
+	 * 			 * full：
+	 * 			 * 5.2之前 isFullConfigurationClass ——>如果该类被@Configuration注解标记，将设置属性ConfigurationClassPostProcessor.configurationClass为full
+	 * 			 * 5.2之后 isFullConfigurationClass ——>标记的@Configuration中的proxyMethod=true
+	 * 			 *
+	 * 			 * lite
+	 * 			 * 5.2之前：isLiteConfigurationClass——>>如果该类被Component、ComponentScan、Import、ImportResource注解标记或者该类方法中上有@Bean注解，将设置属性ConfigurationClassPostProcessor.configurationClass为lite
+	 * 			 * 5.2之后：在前面的基础+proxyMethod=false
+	 */
 	public void processConfigBeanDefinitions(BeanDefinitionRegistry registry) {
 		List<BeanDefinitionHolder> configCandidates = new ArrayList<>();
 		String[] candidateNames = registry.getBeanDefinitionNames();
@@ -324,6 +334,7 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 						registry, this.sourceExtractor, this.resourceLoader, this.environment,
 						this.importBeanNameGenerator, parser.getImportRegistry());
 			}
+			//处理@Import标注的类以及方法上有@Bean标记的类（前面只是将相应的类找出来，并未注册到beanDefinitionMap中），
 			this.reader.loadBeanDefinitions(configClasses);
 			alreadyParsed.addAll(configClasses);
 

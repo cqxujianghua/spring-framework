@@ -133,15 +133,19 @@ class ConfigurationClassBeanDefinitionReader {
 			this.importRegistry.removeImportingClass(configClass.getMetadata().getClassName());
 			return;
 		}
-
+        //当前类通过import导入的 尚未将此类注册到beanDefinitionMap中
 		if (configClass.isImported()) {
 			registerBeanDefinitionForImportedConfigurationClass(configClass);
 		}
+		//将@Bean标记的方法注册到beanDefinitionMap
 		for (BeanMethod beanMethod : configClass.getBeanMethods()) {
 			loadBeanDefinitionsForBeanMethod(beanMethod);
 		}
 
+		//ImportResources
 		loadBeanDefinitionsFromImportedResources(configClass.getImportedResources());
+
+		//回调BeanDefinitionRegistrar的实现类
 		loadBeanDefinitionsFromRegistrars(configClass.getImportBeanDefinitionRegistrars());
 	}
 
@@ -152,14 +156,20 @@ class ConfigurationClassBeanDefinitionReader {
 		AnnotationMetadata metadata = configClass.getMetadata();
 		AnnotatedGenericBeanDefinition configBeanDef = new AnnotatedGenericBeanDefinition(metadata);
 
+		//解析是否生成代理类，打标操作
 		ScopeMetadata scopeMetadata = scopeMetadataResolver.resolveScopeMetadata(configBeanDef);
 		configBeanDef.setScope(scopeMetadata.getScopeName());
+		//生成beanName
 		String configBeanName = this.importBeanNameGenerator.generateBeanName(configBeanDef, this.registry);
+		//解析该类的 @Lazy、@Primary、@DependsOn、@Role等属性 并设置到beanDefinition中
 		AnnotationConfigUtils.processCommonDefinitionAnnotations(configBeanDef, metadata);
 
 		BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(configBeanDef, configBeanName);
+        //生成代理类的definitionHolder
 		definitionHolder = AnnotationConfigUtils.applyScopedProxyMode(scopeMetadata, definitionHolder, this.registry);
+        //注册到beanDefinitionMap
 		this.registry.registerBeanDefinition(definitionHolder.getBeanName(), definitionHolder.getBeanDefinition());
+		//回设beanName
 		configClass.setBeanName(configBeanName);
 
 		if (logger.isTraceEnabled()) {

@@ -235,6 +235,7 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 
 	@Override
 	public Object getEarlyBeanReference(Object bean, String beanName) {
+		//生成缓存key
 		Object cacheKey = getCacheKey(bean.getClass(), beanName);
 		this.earlyProxyReferences.put(cacheKey, bean);
 		return wrapIfNecessary(bean, beanName, cacheKey);
@@ -295,12 +296,38 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 	public Object postProcessAfterInitialization(@Nullable Object bean, String beanName) {
 		if (bean != null) {
 			Object cacheKey = getCacheKey(bean.getClass(), beanName);
+			/*如果有循环依赖A和B，先实例化A并加入三级缓存，然后填充属性，发现依赖Ｂ此时需要实例化B，同样加入三级缓存，填充属性B此时获取A的早期引用，
+			生成A的早期引用并从三级缓存移除加入二级缓存earlyProxyReferences。因此此处执行B实例时earlyProxyReferences没有B；在执行A实例时，此处有A；
+
+            1、二级缓存能否行？
+             A、如果没aop，二级可以；bean生产过程分成实例化和初始化，实例化后放在二级缓存，初始化完再放到一级缓存，则保证bean的完整性；
+             B、如果有aop，二级无法解决循环依赖；会出现二级缓存中相同的beanName在不同阶段（实例化后和初始化后）不是同一个bean，导致混乱；
+
+			2、为什么不直接在放入两级缓存之前执行aop逻辑？
+
+			A、因为循环依赖的相对较少，没必要针对小部分实例执行一遍（wrapIfNecessary）。反正后续的BeanPostProcessor中的postProcessAfterInitialization有对aop的处理；
+
+			B、三级缓存的目的就是让如果有循环依赖，提前执行可能存在的aop操作（如果存在aop），从而放入二级缓存的bean是生成的代理对象，
+			从而保证二级缓存中相同的beanName是同一个bean;
+			 */
 			if (this.earlyProxyReferences.remove(cacheKey) != bean) {
 				return wrapIfNecessary(bean, beanName, cacheKey);
 			}
 		}
 		return bean;
 	}
+
+
+	/**
+	 * 		关于循环依赖、aop的总结
+	 * 			普通Bean的aop织入是在初始化后applyBeanPostProcessorsAfterInitialization方法实现。
+	 * 			具体是通过AnnotationAwareAspectJAutoProxyCreator的postProcessAfterInitialization方法生成动态代理。
+	 * 			但是出现循环依赖时，需要通过提前暴露中获取早期实现（earlyBeanReference），通过getEarlyBeanReference
+	 * 			方法中执行AnnotationAwareAspectJAutoProxyCreator的getEarlyBeanReference—>wrapIfNecessary实现；
+	 * 			如果在解决循环依赖中已经实现代理，则在postProcessAfterInitialization中通过
+	 * 			if (this.earlyProxyReferences.remove(cacheKey) != bean)避免重复执行aop逻辑；
+	 * 			为什么不直接在三级缓存中放入aop以后的对象？因为循环依赖的相对较少，没必要针对小部分实例走一遍；
+	 */
 
 
 	/**
@@ -335,6 +362,7 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 		if (StringUtils.hasLength(beanName) && this.targetSourcedBeans.contains(beanName)) {
 			return bean;
 		}
+		//缓存，如果为false则提前返回
 		if (Boolean.FALSE.equals(this.advisedBeans.get(cacheKey))) {
 			return bean;
 		}
@@ -345,6 +373,7 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 
 		// Create proxy if we have advice.
 		Object[] specificInterceptors = getAdvicesAndAdvisorsForBean(bean.getClass(), beanName, null);
+		//创建代理对象
 		if (specificInterceptors != DO_NOT_PROXY) {
 			this.advisedBeans.put(cacheKey, Boolean.TRUE);
 			Object proxy = createProxy(

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:aop="http://www.springframework.org/schema/aop"
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans
+	    https://www.springframework.org/schema/beans/spring-beans-2.0.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop.xsd">
+	<!--
+	对头文件的说明：
+	xmnls—引用 targetNamespace 为http://www.springframework.org/schema/beans的schema文件
+    xmlns:aop 因一个xml只能在一个主schema命名空间内，但是需要引入其他的schema，因此则通过加别名进行区分，引用aop里面的属性时采用以aop开始，以此类推
+    xmlns:xsi用于区分schema文件，表示此文件为xml文件，可以用于实例化
+    xsi:schemaLocation以上schema的的文件位置，采用k v的格式
+
+     spring.schemas：启动时需要校验是否正确，如果无法联网，则通过spring.schemas将url映射成本地的schema文件进行校验
+     spring.handler：用于指定标签所对应的解析器，用于解析元素到指定的beanDefinition.
+
+     NamespaceHandlerSupport继承NameSpaceHandler,然后各个继承nameSpaceHandleSupport的子类通过init方法注册相应标签解析器到map中；
+
+     DefaultNamespaceHandlerResolver继承NamespaceHandlerResolver，解析自定义标签时，通过NameSpace拿到对应的NameSpaceHandler。
+
+     总共两层映射关系：
+     nameSpace —> NamespaceHandlerSupport   private volatile Map<String, Object> handlerMappings;
+
+     标签  —> beanDefinitionParser   private final Map<String, BeanDefinitionParser> parsers = new HashMap<>()
+     -->
+	<import resource="bean1.xml"></import>
+	<bean id="bean2" class="xu.jiang.hua.bean.Bean2">
+		<constructor-arg index="0" ref="bean1"></constructor-arg>
+	</bean>
+
+    <aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+</beans>

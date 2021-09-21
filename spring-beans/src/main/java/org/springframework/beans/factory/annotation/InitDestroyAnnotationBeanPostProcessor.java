@@ -196,11 +196,14 @@ public class InitDestroyAnnotationBeanPostProcessor
 	}
 
 	private LifecycleMetadata buildLifecycleMetadata(final Class<?> clazz) {
+		//@PostConstruct
 		List<LifecycleElement> initMethods = new ArrayList<>();
+		//@PreDestroy
 		List<LifecycleElement> destroyMethods = new ArrayList<>();
 		Class<?> targetClass = clazz;
 
 		do {
+			//取类的父类进行循环，直到类的父类为Object  保证所有的初始化方法能取到
 			final List<LifecycleElement> currInitMethods = new ArrayList<>();
 			final List<LifecycleElement> currDestroyMethods = new ArrayList<>();
 
@@ -269,6 +272,7 @@ public class InitDestroyAnnotationBeanPostProcessor
 		}
 
 		public void checkConfigMembers(RootBeanDefinition beanDefinition) {
+			//针对Init和destory进行校验
 			Set<LifecycleElement> checkedInitMethods = new LinkedHashSet<>(this.initMethods.size());
 			for (LifecycleElement element : this.initMethods) {
 				String methodIdentifier = element.getIdentifier();
@@ -291,6 +295,7 @@ public class InitDestroyAnnotationBeanPostProcessor
 					}
 				}
 			}
+			//此处的this指LifecycleMetadata
 			this.checkedInitMethods = checkedInitMethods;
 			this.checkedDestroyMethods = checkedDestroyMethods;
 		}
